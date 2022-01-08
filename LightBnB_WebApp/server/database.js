@@ -1,83 +1,84 @@
-const { Pool } = require("pg");
+// const { Pool } = require("pg");
 
-const pool = new Pool({
-  user: "sm",
-  password: "123",
-  host: "localhost",
-  database: "lightbnb",
-  port: "3000"
-});
+// const pool = new Pool({
+//   user: "sm",
+//   password: "123",
+//   host: "localhost",
+//   database: "lightbnb",
+//   port: "3000",
+// });
 
-// let args = process.argv.slice(2);
-
-// let queryString = `
-// SELECT students.id as student_id, students.name as name, cohorts.name as cohort
-// FROM students
-// JOIN cohorts ON cohorts.id = cohort_id
-// WHERE cohorts.name LIKE $1
-// LIMIT $2;
-// `;
-// pool
-//   .query(queryString) --, args)
-//   .then((res) => {
-//     res.rows.forEach((user) => {
-//       console.log(
-//         `${user.name} has an id of ${user.student_id} and was in the ${user.cohort} cohort`
-//       );
-//     });
-//   })
-//   .catch((err) => console.error("query error", err.stack));
+const db = require("./index.js");
 
 const properties = require("./json/properties.json");
 const users = require("./json/users.json");
 
-/// Users
 
+////////////  const getUserWithEmail  ////////////
 /**
  * Get a single user from the database given their email.
  * @param {String} email The email of the user.
  * @return {Promise<{}>} A promise to the user.
  */
 const getUserWithEmail = function(email) {
-  let user;
-  for (const userId in users) {
-    user = users[userId];
-    if (user.email.toLowerCase() === email.toLowerCase()) {
-      break;
-    } else {
-      user = null;
-    }
-  }
-  return Promise.resolve(user);
+  return db
+    .query(
+      `
+  SELECT *
+  FROM users
+  WHERE email = $1
+  `,
+      [email]
+    )
+    .then((res) => res.rows[0])
+    .catch((err) => null);
 };
 exports.getUserWithEmail = getUserWithEmail;
 
+////////////  getUserWithId  ////////////
 /**
  * Get a single user from the database given their id.
  * @param {string} id The id of the user.
  * @return {Promise<{}>} A promise to the user.
  */
 const getUserWithId = function(id) {
-  return Promise.resolve(users[id]);
+  return db
+    .query(
+      `
+  SELECT *
+  FROM users
+  WHERE id = $1
+  `,
+      [id]
+    )
+    .then((res) => res.rows[0])
+    .catch((err) => null);
 };
 exports.getUserWithId = getUserWithId;
 
+////////////  ADD USER  ////////////
 /**
  * Add a new user to the database.
  * @param {{name: string, password: string, email: string}} user
  * @return {Promise<{}>} A promise to the user.
  */
 const addUser = function(user) {
-  const userId = Object.keys(users).length + 1;
-  user.id = userId;
-  users[userId] = user;
-  return Promise.resolve(user);
+  return db
+    .query(
+      `
+  INSERT INTO users (name, email, password)
+  VALUES($1, $2, $3)
+  RETURNING *
+  `,
+      [user.name, user.email, user.password]
+    )
+    .then((res) => res.rows[0]);
 };
 exports.addUser = addUser;
 
-/// Reservations
 
-/**
+////////////  Reservations  ////////////
+/*
  * Get all reservations for a single user.
  * @param {string} guest_id The id of the user.
  * @return {Promise<[{}]>} A promise to the reservations.
@@ -87,9 +88,9 @@ const getAllReservations = function(guest_id, limit = 10) {
 };
 exports.getAllReservations = getAllReservations;
 
-/// Properties
 
-/**
+////////////  GET ALL Properties  ////////////
+/*
  * Get all properties.
  * @param {{}} options An object containing query options.
  * @param {*} limit The number of results to return.
@@ -107,6 +108,7 @@ const getAllProperties = (options, limit = 10) => {
 
 exports.getAllProperties = getAllProperties;
 
+////////////  ADD Property  ////////////
 /**
  * Add a property to the database
  * @param {{}} property An object containing all of the property details.
