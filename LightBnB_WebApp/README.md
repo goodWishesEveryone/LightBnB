@@ -41,3 +41,7 @@
   * `apiRoutes.js` and `userRoutes.js` are responsible for any HTTP requests to `/users/something` or `/api/something`. 
   * `json` is a directory that contains a bunch of dummy data in `.json` files.
   * `database.js` is responsible for all queries to the database. It doesn't currently connect to any database, all it does is return data from `.json` files.
+
+  ## Getting Started
+  * Start up the server `npm run local`
+  * Open the home page of our application `localhost:3000`
