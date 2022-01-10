@@ -75,6 +75,7 @@ const addUser = function(user) {
 };
 exports.addUser = addUser;
 
+
 ////////////  Reservations  ////////////
 /*
  * Get all reservations for a single user.
@@ -100,6 +101,7 @@ const getAllReservations = function(guest_id, limit = 10) {
     .then((res) => res.rows);
 };
 exports.getAllReservations = getAllReservations;
+
 
 ////////////  GET ALL Properties  ////////////
 /*
