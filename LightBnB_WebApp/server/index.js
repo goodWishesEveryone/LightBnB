@@ -1,10 +1,11 @@
 const { Pool } = require('pg');
 
 const pool = new Pool({
-  user: 'vagrant',
+  user: 'sm',
   password: '123',
   host: 'localhost',
-  database: 'lightbnb'
+  database: 'lightbnb',
+  port: "3000"
 });
 
 module.exports = {
