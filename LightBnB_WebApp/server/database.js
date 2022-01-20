@@ -75,7 +75,6 @@ const addUser = function(user) {
 };
 exports.addUser = addUser;
 
-
 ////////////  Reservations  ////////////
 /*
  * Get all reservations for a single user.
@@ -83,7 +82,9 @@ exports.addUser = addUser;
  * @return {Promise<[{}]>} A promise to the reservations.
  */
 const getAllReservations = function(guest_id, limit = 10) {
-  return db.query(`
+  return db
+    .query(
+      `
   SELECT reservations.*, properties.*, AVG(property_reviews.rating) as average_rating
   FROM reservations
   JOIN properties ON properties.id = reservations.property_id
@@ -93,12 +94,12 @@ const getAllReservations = function(guest_id, limit = 10) {
   GROUP BY reservations.id, properties.id
   ORDER BY start_date
   LIMIT $2;
-  `,[guest_id, limit]
-  )
+  `,
+      [guest_id, limit]
+    )
     .then((res) => res.rows);
 };
 exports.getAllReservations = getAllReservations;
-
 
 ////////////  GET ALL Properties  ////////////
 /*
@@ -109,51 +110,80 @@ exports.getAllReservations = getAllReservations;
  */
 
 const getAllProperties = function(options, limit = 10) {
-  const queryParams = [limit];
+  const queryParams = [];
+
   let queryString = `
-  SELECT properties.*, avg(property_reviews.rating) as average_rating
+  SELECT properties.*, AVG (property_reviews.rating) as average_rating
   FROM properties
-  JOIN property_reviews ON properties.id = property_id
+  LEFT JOIN property_reviews ON properties.id = property_id
   `;
 
   if (options.city) {
     queryParams.push(`%${options.city}%`);
-    queryString += `WHERE city LIKE $${queryParams.length} `;
+
+    queryString += `
+    WHERE city LIKE $${queryParams.length}`;
   }
 
   if (options.owner_id) {
-    queryParams.push(`%${options.owner_id}%`);
+    queryParams.push(options.owner_id);
+
     if (options.city) {
-      queryString += `AND owner_id = $${queryParams.length} `;
+      queryString += `
+      AND properties.owner_id = $${queryParams.length}`;
     } else {
-      queryString += `WHERE owner_id = $${queryParams.length} `;
+      queryString += `
+      WHERE properties.owner_id = $${queryParams.length}`;
     }
   }
 
-  if (options.minimum_price_per_night && options.maximum_price_per_night) {
-    queryParams.push(parseInt(options.minimum_price_per_night, 10));
-    queryString += `AND cost_per_night >= $${queryParams.length} `;
-    queryParams.push(parseInt(options.maximum_price_per_night, 10));
-    queryString += `AND cost_per_night <= $${queryParams.length} `;
+  if (options.minimum_price_per_night) {
+    queryParams.push(options.minimum_price_per_night);
+
+    if (options.city || options.owner_id) {
+      queryString += `
+      AND properties.cost_per_night >= $${queryParams.length}`;
+    } else {
+      queryString += `
+      WHERE properties.cost_per_night >= $${queryParams.length}`;
+    }
+  }
+
+  if (options.maximum_price_per_night) {
+    queryParams.push(options.maximum_price_per_night);
+
+    if (options.city || options.owner_id || options.minimum_price_per_night) {
+      queryString += `
+      AND properties.cost_per_night <= $${queryParams.length}`;
+    } else {
+      queryString += `
+      WHERE properties.cost_per_night <= $${queryParams.length}`;
+    }
   }
 
   if (options.minimum_rating) {
-    queryParams.push(options.minimum_rating);
-    queryString += `HAVING AVG(property_reviews.rating) >= $${queryParams.length} 
+    queryParams.push(options.minimum_rating, limit);
+
+    queryString += `
+    GROUP BY properties.id
+    HAVING AVG (property_reviews.rating) >= $${queryParams.length - 1}
+    ORDER BY cost_per_night
+    LIMIT $${queryParams.length};
+    `;
+  } else {
+    queryParams.push(limit);
+
+    queryString += `
+    GROUP BY properties.id
+    ORDER BY cost_per_night
+    LIMIT $${queryParams.length};
     `;
   }
 
-  queryString += `
-  GROUP BY properties.id
-  ORDER BY cost_per_night
-  LIMIT $${queryParams.length};
-  `;
-
-  console.log(queryString, queryParams);
-  return pool.query(queryString, queryParams).then((res) => res.rows);
+  return db.query(queryString, queryParams).then((res) => res.rows);
 };
-
 exports.getAllProperties = getAllProperties;
+
 
 ////////////  ADD Property  ////////////
 /**
